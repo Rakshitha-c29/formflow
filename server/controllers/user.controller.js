@@ -18,7 +18,7 @@ exports.updateUserRole = asyncHandler(async (req, res) => {
         req.params.id,
         { role },
         { returnDocument: "after", runValidators: true }
-    ).select("-password");
+    );
 
     if (!user) {
         throw new AppError("User not found", 404);

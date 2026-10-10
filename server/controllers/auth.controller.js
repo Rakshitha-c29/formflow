@@ -16,7 +16,8 @@ const generateToken = (user) => {
         },
         process.env.JWT_SECRET,
         {
-            expiresIn: process.env.JWT_EXPIRES_IN || "7d"
+            algorithm: "HS256",
+            expiresIn: process.env.JWT_EXPIRES_IN || "1d"
         }
     );
 };
@@ -62,7 +63,8 @@ exports.registerUser = asyncHandler(async (req, res) => {
 exports.loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    // password is select: false on the model, so request it explicitly here only
+    const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
         throw new AppError("Invalid email or password", 401);

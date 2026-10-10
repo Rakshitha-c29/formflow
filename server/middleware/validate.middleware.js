@@ -9,7 +9,7 @@ const validate = (schema) => (req, res, next) => {
     const errors = schema(req.body);
 
     if (errors.length > 0) {
-        return next(new AppError(errors.join(", "), 400));
+        return next(new AppError(errors.join(", "), 400, errors));
     }
 
     next();

@@ -21,6 +21,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 6,
+      // Excluded from every query unless explicitly requested with .select("+password")
+      select: false,
     },
 
     role: {

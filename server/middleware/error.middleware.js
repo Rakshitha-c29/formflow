@@ -22,10 +22,8 @@ const normalizeError = (err) => {
 
     // Mongoose schema validation
     if (err.name === "ValidationError") {
-        const message = Object.values(err.errors)
-            .map((e) => e.message)
-            .join(", ");
-        return new AppError(message, 400);
+        const errors = Object.values(err.errors).map((e) => e.message);
+        return new AppError(errors.join(", "), 400, errors);
     }
 
     // Unique index violation
@@ -63,10 +61,16 @@ const errorHandler = (err, req, res, next) => {
         console.error(err);
     }
 
-    res.status(statusCode).json({
+    const body = {
         success: false,
         message: error.isOperational ? error.message : "Internal server error"
-    });
+    };
+
+    if (error.isOperational && Array.isArray(error.errors)) {
+        body.errors = error.errors;
+    }
+
+    res.status(statusCode).json(body);
 };
 
 module.exports = { notFound, errorHandler };

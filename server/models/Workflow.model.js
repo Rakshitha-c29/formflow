@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { ROLE_VALUES } = require("../constants/roles");
 
 const workflowSchema = new mongoose.Schema(
     {
@@ -33,6 +34,7 @@ const workflowSchema = new mongoose.Schema(
 
                 approverRole: {
                     type: String,
+                    enum: ROLE_VALUES,
                     required: true
                 }
             }

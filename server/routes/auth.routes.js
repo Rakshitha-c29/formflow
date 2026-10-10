@@ -8,10 +8,12 @@ const {
 } = require("../controllers/auth.controller");
 
 const protect = require("../middleware/auth.middleware");
+const validate = require("../middleware/validate.middleware");
+const { registerSchema, loginSchema } = require("../validations/auth.validation");
 
-router.post("/register", registerUser);
+router.post("/register", validate(registerSchema), registerUser);
 
-router.post("/login", loginUser);
+router.post("/login", validate(loginSchema), loginUser);
 
 // Temporary protected route
 router.get("/profile", protect, (req, res) => {

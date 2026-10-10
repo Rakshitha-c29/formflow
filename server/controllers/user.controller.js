@@ -31,3 +31,19 @@ exports.updateUserRole = asyncHandler(async (req, res) => {
         user
     });
 });
+
+
+// ==========================
+// LIST USERS (ADMIN)
+// ==========================
+exports.getUsers = asyncHandler(async (req, res) => {
+    const users = await User.find()
+        .select("name email role createdAt")
+        .sort({ name: 1 });
+
+    res.status(200).json({
+        success: true,
+        count: users.length,
+        users
+    });
+});

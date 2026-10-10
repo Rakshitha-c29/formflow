@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function Login() {
     const navigate = useNavigate();
+    const { login } = useAuth();
+
+    // Set by the API interceptor when a 401 ends the session
+    const [searchParams] = useSearchParams();
+    const sessionExpired = searchParams.get("expired") === "1";
 
     const [form, setForm] = useState({
         email: "",
@@ -29,16 +35,7 @@ function Login() {
         try {
             const response = await api.post("/auth/login", form);
 
-            const token = response.data.token;
-
-            localStorage.setItem("token", token);
-
-            if (response.data.user) {
-                localStorage.setItem(
-                    "user",
-                    JSON.stringify(response.data.user)
-                );
-            }
+            login(response.data.token, response.data.user);
 
             navigate("/dashboard");
 
@@ -66,6 +63,12 @@ function Login() {
                 <p className="subtitle">
                     Sign in to manage your workflow requests.
                 </p>
+
+                {sessionExpired && !error && (
+                    <div className="error-message">
+                        Your session has ended. Please sign in again.
+                    </div>
+                )}
 
                 {error && (
                     <div className="error-message">

@@ -61,3 +61,25 @@ exports.getWorkflowById = asyncHandler(async (req, res) => {
         workflow
     });
 });
+
+
+// ==========================
+// ACTIVATE / DEACTIVATE WORKFLOW (ADMIN)
+// ==========================
+exports.updateWorkflowStatus = asyncHandler(async (req, res) => {
+    const workflow = await Workflow.findByIdAndUpdate(
+        req.params.id,
+        { isActive: req.body.isActive },
+        { returnDocument: "after" }
+    );
+
+    if (!workflow) {
+        throw new AppError("Workflow not found", 404);
+    }
+
+    res.status(200).json({
+        success: true,
+        message: workflow.isActive ? "Workflow activated" : "Workflow deactivated",
+        workflow
+    });
+});

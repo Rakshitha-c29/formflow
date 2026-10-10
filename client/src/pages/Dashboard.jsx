@@ -1,11 +1,24 @@
-import { useEffect, useState } from "react";
-import api from "../services/api";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import api, { getApiError } from "../services/api";
+import { useApiGet } from "../hooks/useApiGet";
+import { useAuth } from "../context/AuthContext";
+import { ROLES, roleLabel } from "../constants/roles";
+import { getCurrentStep } from "../utils/requests";
 
 function Dashboard() {
-    const [requests, setRequests] = useState([]);
-    const [workflows, setWorkflows] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+
+    const requestsQuery = useApiGet("/requests", "Could not load your requests.");
+    const workflowsQuery = useApiGet("/workflows", "Could not load workflows.");
+
+    const requests = requestsQuery.data?.requests || [];
+    const workflows = workflowsQuery.data?.workflows || [];
+    const loadError = requestsQuery.error || workflowsQuery.error;
+
     const [message, setMessage] = useState("");
+    const [submitError, setSubmitError] = useState("");
+    const [submitting, setSubmitting] = useState(false);
 
     const [showCreate, setShowCreate] = useState(false);
 
@@ -14,34 +27,6 @@ function Dashboard() {
         title: "",
         description: "",
     });
-
-    const loadData = async () => {
-        try {
-            const requestsResponse = await api.get("/requests");
-            const workflowsResponse = await api.get("/workflows");
-
-            setRequests(
-                requestsResponse.data.requests || []
-            );
-
-            setWorkflows(
-                workflowsResponse.data.workflows || []
-            );
-        } catch (error) {
-            console.error("Dashboard error:", error);
-
-            setMessage(
-                error.response?.data?.message ||
-                "Could not load dashboard data."
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadData();
-    }, []);
 
     const handleChange = (e) => {
         setForm({
@@ -54,6 +39,8 @@ function Dashboard() {
         e.preventDefault();
 
         setMessage("");
+        setSubmitError("");
+        setSubmitting(true);
 
         try {
             await api.post("/requests", form);
@@ -68,16 +55,24 @@ function Dashboard() {
 
             setShowCreate(false);
 
-            await loadData();
+            requestsQuery.reload();
         } catch (error) {
-            setMessage(
-                error.response?.data?.message ||
-                "Could not submit request."
-            );
+            setSubmitError(getApiError(error, "Could not submit request.").message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
-    if (loading) {
+    const closeCreate = () => {
+        setShowCreate(false);
+        setSubmitError("");
+    };
+
+    const firstLoad =
+        (requestsQuery.loading && !requestsQuery.data) ||
+        (workflowsQuery.loading && !workflowsQuery.data);
+
+    if (firstLoad && !loadError) {
         return (
             <main className="page">
                 <div className="loading">
@@ -124,6 +119,21 @@ function Dashboard() {
             {message && (
                 <div className="success-message">
                     {message}
+                </div>
+            )}
+
+            {loadError && (
+                <div className="error-message">
+                    {loadError.message}{" "}
+                    <button
+                        className="secondary-btn"
+                        onClick={() => {
+                            requestsQuery.reload();
+                            workflowsQuery.reload();
+                        }}
+                    >
+                        Try again
+                    </button>
                 </div>
             )}
 
@@ -177,8 +187,9 @@ function Dashboard() {
 
                         {requests.map((request) => (
 
-                            <div
-                                className="request-card"
+                            <Link
+                                to={`/requests/${request._id}`}
+                                className="request-card clickable"
                                 key={request._id}
                             >
 
@@ -200,13 +211,17 @@ function Dashboard() {
                                         {request.status}
                                     </span>
 
-                                    <span>
-                                        Step {request.currentStep}
-                                    </span>
+                                    {request.status === "pending" && (
+                                        <span>
+                                            Step {request.currentStep}
+                                            {getCurrentStep(request) &&
+                                                ` · waiting on ${roleLabel(getCurrentStep(request).approverRole)}`}
+                                        </span>
+                                    )}
 
                                 </div>
 
-                            </div>
+                            </Link>
 
                         ))}
 
@@ -232,7 +247,11 @@ function Dashboard() {
                         <h3>No workflows available</h3>
 
                         <p>
-                            Create a workflow from the backend first.
+                            {user.role === ROLES.ADMIN ? (
+                                <Link to="/admin/workflows">Create one in Workflows.</Link>
+                            ) : (
+                                "Ask an admin to create one."
+                            )}
                         </p>
                     </div>
 
@@ -292,14 +311,18 @@ function Dashboard() {
 
                             <button
                                 className="close-btn"
-                                onClick={() =>
-                                    setShowCreate(false)
-                                }
+                                onClick={closeCreate}
                             >
                                 ×
                             </button>
 
                         </div>
+
+                        {submitError && (
+                            <div className="error-message">
+                                {submitError}
+                            </div>
+                        )}
 
                         <form onSubmit={createRequest}>
 
@@ -359,8 +382,9 @@ function Dashboard() {
                             <button
                                 className="primary-btn"
                                 type="submit"
+                                disabled={submitting}
                             >
-                                Submit Request
+                                {submitting ? "Submitting..." : "Submit Request"}
                             </button>
 
                         </form>

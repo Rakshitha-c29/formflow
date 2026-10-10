@@ -8,71 +8,52 @@ import {
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import Navbar from "./components/Navbar";
+import PendingApprovals from "./pages/PendingApprovals";
+import RequestDetail from "./pages/RequestDetail";
+import AdminWorkflows from "./pages/admin/AdminWorkflows";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AuthProvider from "./context/AuthProvider";
+import { ProtectedLayout, RoleRoute } from "./components/RouteGuards";
+import { APPROVER_ROLES, ROLES } from "./constants/roles";
 
 import "./App.css";
 
-function ProtectedRoute({ children }) {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-        return <Navigate to="/login" replace />;
-    }
-
-    return children;
-}
-
 function App() {
     return (
-        <BrowserRouter>
+        <AuthProvider>
+            <BrowserRouter>
 
-            <Routes>
+                <Routes>
 
-                <Route
-                    path="/login"
-                    element={<Login />}
-                />
+                    <Route path="/login" element={<Login />} />
 
-                <Route
-                    path="/register"
-                    element={<Register />}
-                />
+                    <Route path="/register" element={<Register />} />
 
-                <Route
-                    path="/dashboard"
-                    element={
-                        <ProtectedRoute>
-                            <>
-                                <Navbar />
-                                <Dashboard />
-                            </>
-                        </ProtectedRoute>
-                    }
-                />
+                    <Route element={<ProtectedLayout />}>
 
-                <Route
-                    path="/"
-                    element={
-                        <Navigate
-                            to="/dashboard"
-                            replace
-                        />
-                    }
-                />
+                        <Route path="/dashboard" element={<Dashboard />} />
 
-                <Route
-                    path="*"
-                    element={
-                        <Navigate
-                            to="/dashboard"
-                            replace
-                        />
-                    }
-                />
+                        <Route path="/requests/:id" element={<RequestDetail />} />
 
-            </Routes>
+                        <Route element={<RoleRoute roles={APPROVER_ROLES} />}>
+                            <Route path="/approvals" element={<PendingApprovals />} />
+                        </Route>
 
-        </BrowserRouter>
+                        <Route element={<RoleRoute roles={[ROLES.ADMIN]} />}>
+                            <Route path="/admin/workflows" element={<AdminWorkflows />} />
+                            <Route path="/admin/users" element={<AdminUsers />} />
+                        </Route>
+
+                    </Route>
+
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
+                </Routes>
+
+            </BrowserRouter>
+        </AuthProvider>
     );
 }
 

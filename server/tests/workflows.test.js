@@ -86,3 +86,54 @@ describe("GET /api/workflows visibility", () => {
         expect(asAdmin.status).toBe(200);
     });
 });
+
+describe("PATCH /api/workflows/:id/status (admin only)", () => {
+    let admin, workflow;
+
+    const setStatus = (user, body, id = workflow.id) =>
+        request(app)
+            .patch(`/api/workflows/${id}/status`)
+            .set("Authorization", bearer(user))
+            .send(body);
+
+    beforeEach(async () => {
+        admin = await createUser("admin");
+        workflow = await createWorkflow(admin);
+    });
+
+    it("lets admin deactivate and reactivate a workflow", async () => {
+        const off = await setStatus(admin, { isActive: false });
+        expect(off.status).toBe(200);
+        expect(off.body.workflow.isActive).toBe(false);
+
+        const on = await setStatus(admin, { isActive: true });
+        expect(on.body.workflow.isActive).toBe(true);
+    });
+
+    it("hides a deactivated workflow from non-admins", async () => {
+        const employee = await createUser("employee");
+
+        await setStatus(admin, { isActive: false });
+
+        const res = await request(app).get("/api/workflows").set("Authorization", bearer(employee));
+        expect(res.body.workflows).toEqual([]);
+    });
+
+    it.each(["employee", "manager", "hr"])("rejects %s with 403 and leaves it active", async (role) => {
+        const user = await createUser(role);
+
+        expect((await setStatus(user, { isActive: false })).status).toBe(403);
+        expect((await Workflow.findById(workflow._id)).isActive).toBe(true);
+    });
+
+    it.each([[{}], [{ isActive: "false" }], [{ isActive: { $ne: null } }]])("rejects body %j with 400", async (body) => {
+        const res = await setStatus(admin, body);
+
+        expect(res.status).toBe(400);
+        expect(res.body.errors).toEqual(["isActive must be true or false"]);
+    });
+
+    it("returns 404 for an unknown workflow", async () => {
+        expect((await setStatus(admin, { isActive: false }, "000000000000000000000000")).status).toBe(404);
+    });
+});

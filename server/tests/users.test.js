@@ -103,3 +103,36 @@ describe("role changes apply immediately to existing tokens", () => {
         expect(res.status).toBe(403);
     });
 });
+
+describe("GET /api/users (admin only)", () => {
+    it("lists users with name, email and role but never the password", async () => {
+        const admin = await createUser("admin");
+        await createUser("manager");
+
+        const res = await request(app).get("/api/users").set("Authorization", bearer(admin));
+
+        expect(res.status).toBe(200);
+        expect(res.body.count).toBe(2);
+        for (const user of res.body.users) {
+            expect(user).toEqual(expect.objectContaining({
+                name: expect.any(String),
+                email: expect.any(String),
+                role: expect.any(String)
+            }));
+            expect(user).not.toHaveProperty("password");
+        }
+    });
+
+    it.each(["employee", "manager", "hr"])("rejects %s with 403", async (role) => {
+        const user = await createUser(role);
+
+        const res = await request(app).get("/api/users").set("Authorization", bearer(user));
+
+        expect(res.status).toBe(403);
+        expect(res.body.users).toBeUndefined();
+    });
+
+    it("rejects an unauthenticated request with 401", async () => {
+        expect((await request(app).get("/api/users")).status).toBe(401);
+    });
+});

@@ -2,6 +2,8 @@ const Request = require("../models/Request.model");
 const Workflow = require("../models/Workflow.model");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
+const { ROLES } = require("../constants/roles");
+const { canActOnRequest, canViewRequest } = require("../services/request.service");
 
 
 // ==========================
@@ -61,13 +63,30 @@ exports.getMyRequests = asyncHandler(async (req, res) => {
 // ==========================
 // GET PENDING REQUESTS
 // ==========================
+// Admin sees every pending request; everyone else sees only the ones
+// waiting on their role at the current step (never their own)
 exports.getPendingRequests = asyncHandler(async (req, res) => {
-    const requests = await Request.find({
-        status: "pending"
-    })
+    const filter = { status: "pending" };
+
+    if (req.user.role !== ROLES.ADMIN) {
+        const workflowIds = await Workflow.find({
+            "steps.approverRole": req.user.role
+        }).distinct("_id");
+
+        filter.workflow = { $in: workflowIds };
+        filter.submittedBy = { $ne: req.user._id };
+    }
+
+    let requests = await Request.find(filter)
         .populate("workflow", "name description steps")
         .populate("submittedBy", "name email")
         .sort({ createdAt: -1 });
+
+    if (req.user.role !== ROLES.ADMIN) {
+        requests = requests.filter(
+            (request) => canActOnRequest(req.user, request, request.workflow).allowed
+        );
+    }
 
     res.status(200).json({
         success: true,
@@ -88,6 +107,10 @@ exports.getRequestById = asyncHandler(async (req, res) => {
 
     if (!request) {
         throw new AppError("Request not found", 404);
+    }
+
+    if (!canViewRequest(req.user, request, request.workflow)) {
+        throw new AppError("You do not have permission to view this request", 403);
     }
 
     res.status(200).json({
@@ -121,6 +144,13 @@ exports.processRequest = asyncHandler(async (req, res) => {
 
     if (!workflow) {
         throw new AppError("Workflow not found", 404);
+    }
+
+    // Wrong role for the current step, or approving your own request
+    const permission = canActOnRequest(req.user, request, workflow);
+
+    if (!permission.allowed) {
+        throw new AppError(permission.reason, 403);
     }
 
     request.approvalHistory.push({

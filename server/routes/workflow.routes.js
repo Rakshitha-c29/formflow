@@ -9,12 +9,14 @@ const {
 } = require("../controllers/workflow.controller");
 
 const protect = require("../middleware/auth.middleware");
+const authorize = require("../middleware/authorize.middleware");
+const { ROLES } = require("../constants/roles");
 
 
-// Create workflow
-router.post("/", protect, createWorkflow);
+// Create workflow (admin only)
+router.post("/", protect, authorize(ROLES.ADMIN), createWorkflow);
 
-// Get all workflows created by logged-in user
+// Get workflows (admin: all, others: active only)
 router.get("/", protect, getWorkflows);
 
 // Get one workflow

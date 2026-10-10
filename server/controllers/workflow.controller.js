@@ -1,6 +1,11 @@
 const Workflow = require("../models/Workflow.model");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
+const { ROLES } = require("../constants/roles");
+
+// Admins manage every workflow; everyone else only sees ones they can submit to
+const visibleWorkflowsFilter = (user) =>
+    user.role === ROLES.ADMIN ? {} : { isActive: true };
 
 
 // ==========================
@@ -25,12 +30,10 @@ exports.createWorkflow = asyncHandler(async (req, res) => {
 
 
 // ==========================
-// GET ALL MY WORKFLOWS
+// GET ALL VISIBLE WORKFLOWS
 // ==========================
 exports.getWorkflows = asyncHandler(async (req, res) => {
-    const workflows = await Workflow.find({
-        createdBy: req.user.id
-    });
+    const workflows = await Workflow.find(visibleWorkflowsFilter(req.user));
 
     res.status(200).json({
         success: true,
@@ -46,7 +49,7 @@ exports.getWorkflows = asyncHandler(async (req, res) => {
 exports.getWorkflowById = asyncHandler(async (req, res) => {
     const workflow = await Workflow.findOne({
         _id: req.params.id,
-        createdBy: req.user.id
+        ...visibleWorkflowsFilter(req.user)
     });
 
     if (!workflow) {

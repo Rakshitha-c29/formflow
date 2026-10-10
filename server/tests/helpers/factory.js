@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../../models/User.model");
 const Workflow = require("../../models/Workflow.model");
 const Request = require("../../models/Request.model");
+const { snapshotSteps } = require("../../services/request.service");
 
 let counter = 0;
 
@@ -39,13 +40,19 @@ const createWorkflow = (createdBy, overrides = {}) =>
         ...overrides
     });
 
-const createRequest = (submittedBy, workflow, overrides = {}) =>
-    Request.create({
+// Mirrors submitRequest: snapshot the steps and start at the lowest stepNumber
+const createRequest = (submittedBy, workflow, overrides = {}) => {
+    const steps = snapshotSteps(workflow);
+
+    return Request.create({
         workflow: workflow._id,
         submittedBy: submittedBy._id,
         title: "Annual leave",
         description: "Five days in December",
+        steps,
+        currentStep: steps[0].stepNumber,
         ...overrides
     });
+};
 
 module.exports = { createUser, tokenFor, bearer, createWorkflow, createRequest };

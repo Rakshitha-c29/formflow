@@ -11,6 +11,8 @@ const {
 } = require("../controllers/request.controller");
 
 const protect = require("../middleware/auth.middleware");
+const validate = require("../middleware/validate.middleware");
+const { actionSchema } = require("../validations/request.validation");
 
 
 // Submit request
@@ -26,6 +28,6 @@ router.get("/pending", protect, getPendingRequests);
 router.get("/:id", protect, getRequestById);
 
 // Approve / reject
-router.patch("/:id/action", protect, processRequest);
+router.patch("/:id/action", protect, validate(actionSchema), processRequest);
 
 module.exports = router;

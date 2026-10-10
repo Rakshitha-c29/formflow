@@ -20,25 +20,39 @@ const workflowSchema = new mongoose.Schema(
             required: true
         },
 
-        steps: [
-            {
-                stepNumber: {
-                    type: Number,
-                    required: true
-                },
+        // Steps run in ascending stepNumber order; numbers need not be consecutive
+        steps: {
+            type: [
+                {
+                    stepNumber: {
+                        type: Number,
+                        required: true,
+                        min: 1,
+                        validate: {
+                            validator: Number.isInteger,
+                            message: "stepNumber must be a whole number"
+                        }
+                    },
 
-                name: {
-                    type: String,
-                    required: true
-                },
+                    name: {
+                        type: String,
+                        required: true
+                    },
 
-                approverRole: {
-                    type: String,
-                    enum: ROLE_VALUES,
-                    required: true
+                    approverRole: {
+                        type: String,
+                        enum: ROLE_VALUES,
+                        required: true
+                    }
                 }
+            ],
+            validate: {
+                // currentStep identifies a step by stepNumber, so duplicates would be ambiguous
+                validator: (steps) =>
+                    new Set(steps.map((step) => step.stepNumber)).size === steps.length,
+                message: "Each step must have a unique stepNumber"
             }
-        ],
+        },
 
         isActive: {
             type: Boolean,

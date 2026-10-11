@@ -16,6 +16,13 @@ const { ROLE_VALUES } = require("../constants/roles");
 
 const TEST_PASSWORD = "Password123";
 
+const TEST_USER_NAMES = {
+    employee: "Test Employee",
+    manager: "Test Manager",
+    hr: "Test HR",
+    admin: "Test Admin"
+};
+
 const seed = async () => {
     await connectDB();
 
@@ -34,7 +41,7 @@ const seed = async () => {
         await User.findOneAndUpdate(
             { email },
             {
-                name: `Test ${role.charAt(0).toUpperCase()}${role.slice(1)}`,
+                name: TEST_USER_NAMES[role] || `Test ${role}`,
                 email,
                 password: hashedPassword,
                 role

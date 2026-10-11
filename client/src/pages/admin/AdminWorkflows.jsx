@@ -12,6 +12,12 @@ const emptyForm = () => ({
     steps: [emptyStep()],
 });
 
+const MESSAGE_CLASSES = {
+    success: "success-message",
+    warning: "warning-message",
+    error: "error-message",
+};
+
 function AdminWorkflows() {
     const { data, loading, error: loadError, reload: loadWorkflows, setData } = useApiGet(
         "/workflows",
@@ -21,11 +27,15 @@ function AdminWorkflows() {
 
     const [message, setMessage] = useState(null);
     const [togglingId, setTogglingId] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
 
-    const [showCreate, setShowCreate] = useState(false);
+    // null when closed, { id: null } when creating, { id, name } when editing
+    const [formTarget, setFormTarget] = useState(null);
     const [form, setForm] = useState(emptyForm);
-    const [creating, setCreating] = useState(false);
-    const [createError, setCreateError] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [formError, setFormError] = useState(null);
+
+    const isEditing = Boolean(formTarget?.id);
 
     const toggleActive = async (workflow) => {
         setTogglingId(workflow._id);
@@ -65,33 +75,87 @@ function AdminWorkflows() {
         setForm((current) => ({ ...current, steps: current.steps.filter((_, i) => i !== index) }));
     };
 
-    const closeCreate = () => {
-        setShowCreate(false);
+    const openCreate = () => {
         setForm(emptyForm());
-        setCreateError(null);
+        setFormError(null);
+        setFormTarget({ id: null });
     };
 
-    const createWorkflow = async (e) => {
+    const openEdit = (workflow) => {
+        setForm({
+            name: workflow.name,
+            description: workflow.description || "",
+            steps: sortSteps(workflow.steps).map(({ name, approverRole }) => ({ name, approverRole })),
+        });
+        setFormError(null);
+        setFormTarget({ id: workflow._id, name: workflow.name });
+    };
+
+    const closeForm = () => {
+        setFormTarget(null);
+        setFormError(null);
+    };
+
+    const saveWorkflow = async (e) => {
         e.preventDefault();
 
-        setCreating(true);
-        setCreateError(null);
+        setSaving(true);
+        setFormError(null);
+
+        // Steps run in the order shown, so number them by position
+        const payload = {
+            name: form.name,
+            description: form.description,
+            steps: form.steps.map((step, index) => ({ ...step, stepNumber: index + 1 })),
+        };
 
         try {
-            // Steps run in the order shown, so number them by position
-            await api.post("/workflows", {
-                name: form.name,
-                description: form.description,
-                steps: form.steps.map((step, index) => ({ ...step, stepNumber: index + 1 })),
-            });
+            if (isEditing) {
+                const response = await api.put(`/workflows/${formTarget.id}`, payload);
 
-            setMessage({ type: "success", text: `Workflow "${form.name}" created.` });
-            closeCreate();
-            loadWorkflows();
+                setData((previous) => ({
+                    ...previous,
+                    workflows: previous.workflows.map((w) =>
+                        w._id === formTarget.id ? response.data.workflow : w
+                    ),
+                }));
+                setMessage({ type: "success", text: response.data.message });
+            } else {
+                await api.post("/workflows", payload);
+
+                setMessage({ type: "success", text: `Workflow "${form.name}" created.` });
+                loadWorkflows();
+            }
+
+            closeForm();
         } catch (err) {
-            setCreateError(getApiError(err, "Could not create the workflow."));
+            setFormError(getApiError(err, "Could not save the workflow."));
         } finally {
-            setCreating(false);
+            setSaving(false);
+        }
+    };
+
+    const deleteWorkflow = async (workflow) => {
+        if (!window.confirm(`Delete "${workflow.name}"? This cannot be undone.`)) return;
+
+        setDeletingId(workflow._id);
+        setMessage(null);
+
+        try {
+            await api.delete(`/workflows/${workflow._id}`);
+
+            setData((previous) => ({
+                ...previous,
+                workflows: previous.workflows.filter((w) => w._id !== workflow._id),
+            }));
+            setMessage({ type: "success", text: `Workflow "${workflow.name}" deleted.` });
+        } catch (err) {
+            const { status, message: text } = getApiError(err, "Could not delete the workflow.");
+
+            // 409: requests still use it; the server's message suggests deactivating instead
+            setMessage({ type: status === 409 ? "warning" : "error", text });
+        } finally {
+            setDeletingId(null);
         }
     };
 
@@ -109,13 +173,13 @@ function AdminWorkflows() {
                     </p>
                 </div>
 
-                <button className="primary-btn small" onClick={() => setShowCreate(true)}>
+                <button className="primary-btn small" onClick={openCreate}>
                     + New Workflow
                 </button>
             </div>
 
             {message && (
-                <div className={message.type === "success" ? "success-message" : "error-message"}>
+                <div className={`${MESSAGE_CLASSES[message.type]} page-message`}>
                     {message.text}
                 </div>
             )}
@@ -182,6 +246,24 @@ function AdminWorkflows() {
                                         ? "Saving..."
                                         : workflow.isActive ? "Deactivate" : "Activate"}
                                 </button>
+
+                                <div className="card-actions">
+                                    <button
+                                        className="secondary-btn"
+                                        onClick={() => openEdit(workflow)}
+                                        disabled={deletingId === workflow._id}
+                                    >
+                                        Edit
+                                    </button>
+
+                                    <button
+                                        className="secondary-btn danger"
+                                        onClick={() => deleteWorkflow(workflow)}
+                                        disabled={deletingId === workflow._id}
+                                    >
+                                        {deletingId === workflow._id ? "Deleting..." : "Delete"}
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -189,32 +271,35 @@ function AdminWorkflows() {
                 )}
             </section>
 
-            {showCreate && (
+            {formTarget && (
                 <div className="modal-overlay">
                     <div className="modal">
 
                         <div className="modal-header">
                             <div>
-                                <h2>New Workflow</h2>
-                                <p>Steps are approved in the order listed.</p>
+                                <h2>{isEditing ? `Edit ${formTarget.name}` : "New Workflow"}</h2>
+                                <p>
+                                    Steps are approved in the order listed.
+                                    {isEditing && " Requests already submitted keep their original steps."}
+                                </p>
                             </div>
 
-                            <button className="close-btn" onClick={closeCreate}>×</button>
+                            <button className="close-btn" onClick={closeForm}>×</button>
                         </div>
 
-                        {createError && (
+                        {formError && (
                             <div className="error-message">
-                                {createError.errors.length > 1 ? (
+                                {formError.errors.length > 1 ? (
                                     <ul className="error-list">
-                                        {createError.errors.map((text) => <li key={text}>{text}</li>)}
+                                        {formError.errors.map((text) => <li key={text}>{text}</li>)}
                                     </ul>
                                 ) : (
-                                    createError.message
+                                    formError.message
                                 )}
                             </div>
                         )}
 
-                        <form onSubmit={createWorkflow}>
+                        <form onSubmit={saveWorkflow}>
                             <label htmlFor="wf-name">Name</label>
                             <input
                                 id="wf-name"
@@ -273,8 +358,10 @@ function AdminWorkflows() {
                                 + Add step
                             </button>
 
-                            <button className="primary-btn" type="submit" disabled={creating}>
-                                {creating ? "Creating..." : "Create Workflow"}
+                            <button className="primary-btn" type="submit" disabled={saving}>
+                                {saving
+                                    ? "Saving..."
+                                    : isEditing ? "Save Changes" : "Create Workflow"}
                             </button>
                         </form>
 

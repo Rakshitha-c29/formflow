@@ -924,6 +924,23 @@ select:focus {
 }
 
 
+.card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.secondary-btn.danger:hover {
+    border-color: #e5484d;
+    color: #e5484d;
+}
+
+.warning-message.page-message {
+    margin-top: 18px;
+}
+
+
 /* ADMIN: USERS */
 
 .table-wrapper {

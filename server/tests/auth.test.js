@@ -140,11 +140,11 @@ describe("errors array on validation failures", () => {
         const res = await request(app)
             .post("/api/workflows")
             .set("Authorization", bearer(admin))
-            .send({ steps: [{ stepNumber: 1, name: "S", approverRole: "boss" }] });
+            .send({ name: "W", steps: [{ stepNumber: 0, name: "S", approverRole: "boss" }] });
 
         expect(res.status).toBe(400);
         expect(res.body.errors).toHaveLength(2);
-        expect(res.body.errors.join(" ")).toMatch(/name/);
+        expect(res.body.errors.join(" ")).toMatch(/stepNumber/);
         expect(res.body.errors.join(" ")).toMatch(/approverRole/);
     });
 

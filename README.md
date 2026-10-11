@@ -83,7 +83,7 @@ The project focuses on backend correctness: layered authorization, an explicit s
 | Auth | bcrypt, JSON Web Tokens |
 | Security | helmet, express-rate-limit |
 | Testing | Jest, Supertest, mongodb-memory-server |
-
+| Deployment | Vercel (frontend), Render (API), GitHub Actions (CI) |
 ## Architecture
 
 ```mermaid
@@ -322,6 +322,12 @@ npm run dev
 cd client
 npm run dev
 ```
+## Deployment
+
+- **Frontend**: Vercel, built from `client/` with `VITE_API_URL` pointing at the API.
+- **API**: Render, from `server/`, with `TRUST_PROXY=true` behind Render's proxy and `CLIENT_URL` set to the frontend's origin.
+- **Database**: a dedicated `formflow_demo` database on MongoDB Atlas, accessed by a database user with read/write rights on that database only.
+- **CI**: GitHub Actions runs the server test suite and the client lint and build on every push and pull request.
 
 ## Testing
 
@@ -348,8 +354,7 @@ Key rules were also checked by deliberately breaking them and confirming that te
 
 ## Future Improvements
 
-- **Deployment**: host the API and frontend, and set `CLIENT_URL`, `TRUST_PROXY`, and `VITE_API_URL` for the hosted environment.
-- **Continuous integration**: run tests and linting on every push.
+
 - **Relationship-based approver routing**: route a stage to the submitter's own manager rather than to any user with the manager role.
 - **Conditional routing**: choose stages based on request data (for example, an extra approval above an amount threshold).
 - **Notifications**: alert approvers when a request reaches their stage, and submitters when it completes.

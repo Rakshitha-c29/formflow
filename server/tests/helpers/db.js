@@ -1,25 +1,16 @@
-const dns = require("dns");
+const { randomUUID } = require("crypto");
 const mongoose = require("mongoose");
 
-// Same resolver workaround as config/db.js
-dns.setServers(["1.1.1.1", "8.8.8.8"]);
-
-// Tests wipe every collection, so they must never touch the dev database.
-// The dev MONGO_URI has no db name, which means MongoDB's default "test" db holds dev data.
-const TEST_DB_NAME = process.env.MONGO_TEST_DB || "formflow_test";
-
+// Connects to the in-memory MongoDB started by tests/global-setup.js.
+// Each connection gets a fresh, uniquely named database, so test files never share data.
 const connectTestDB = async () => {
-    if (!TEST_DB_NAME.endsWith("_test")) {
-        throw new Error(`Refusing to run tests against "${TEST_DB_NAME}": name must end with "_test"`);
+    const uri = process.env.MEMORY_MONGO_URI;
+
+    if (!uri) {
+        throw new Error("MEMORY_MONGO_URI is not set. Run the tests with `npm test` so Jest's globalSetup starts the in-memory MongoDB.");
     }
 
-    await mongoose.connect(process.env.MONGO_TEST_URI || process.env.MONGO_URI, {
-        dbName: TEST_DB_NAME
-    });
-
-    if (mongoose.connection.db.databaseName !== TEST_DB_NAME) {
-        throw new Error(`Connected to "${mongoose.connection.db.databaseName}", expected "${TEST_DB_NAME}"`);
-    }
+    await mongoose.connect(uri, { dbName: `test_${randomUUID().slice(0, 8)}` });
 };
 
 const clearTestDB = async () => {
@@ -27,7 +18,10 @@ const clearTestDB = async () => {
     await Promise.all(collections.map((collection) => collection.deleteMany({})));
 };
 
-const disconnectTestDB = () => mongoose.disconnect();
+const disconnectTestDB = async () => {
+    await mongoose.connection.db?.dropDatabase();
+    await mongoose.disconnect();
+};
 
 // Registers the standard lifecycle hooks for an integration test file
 const useTestDB = () => {

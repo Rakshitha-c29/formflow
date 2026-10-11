@@ -20,18 +20,20 @@
   },
   "devDependencies": {
     "jest": "^30.5.2",
+    "mongodb-memory-server": "^11.3.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.3.1"
   },
   "jest": {
     "testEnvironment": "node",
-    "maxWorkers": 1,
     "setupFiles": [
       "<rootDir>/tests/setup-env.js"
     ],
     "testMatch": [
       "<rootDir>/tests/**/*.test.js"
     ],
-    "testTimeout": 30000
+    "testTimeout": 30000,
+    "globalSetup": "<rootDir>/tests/global-setup.js",
+    "globalTeardown": "<rootDir>/tests/global-teardown.js"
   }
 }

@@ -3,6 +3,13 @@ const cors = require("cors");
 
 const app = express();
 
+// Behind one reverse proxy (load balancer, PaaS router), take the client IP from
+// X-Forwarded-For so rate limiting is per user, not per proxy. Off by default:
+// without a proxy in front, clients could spoof that header.
+if (process.env.TRUST_PROXY === "true") {
+    app.set("trust proxy", 1);
+}
+
 // Falls back to the Vite dev server so local development needs no extra config
 app.use(
     cors({

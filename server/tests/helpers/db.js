@@ -36,4 +36,4 @@ const useTestDB = () => {
     afterAll(disconnectTestDB);
 };
 
-module.exports = { useTestDB };
+module.exports = { useTestDB, connectTestDB, clearTestDB, disconnectTestDB };

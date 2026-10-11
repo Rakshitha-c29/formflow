@@ -1,6 +1,12 @@
 # FormFlow
 
+[![Tests](https://github.com/Rakshitha-c29/formflow/actions/workflows/test.yml/badge.svg)](https://github.com/Rakshitha-c29/formflow/actions/workflows/test.yml)
+
 A multi-stage workflow and approval engine with role-based, stage-aware authorization.
+
+**Live demo:** https://your-app.vercel.app (sign in with the [demo accounts](#seed-demo-data), password `Demo@2026`)
+
+> The backend runs on a free hosting tier that sleeps when idle, so the first request after a quiet period can take up to a minute while it wakes up. Later requests are fast.
 
 ## Overview
 
@@ -227,7 +233,7 @@ Responses include the items plus `count` (items on this page), `total`, `page`, 
 ## Setup
 
 ### Prerequisites
-- Node.js 20.19 or later
+- Node.js 22 or later
 - A MongoDB Atlas cluster (or any MongoDB instance) for running the app. Tests do not need one.
 
 ### Environment variables

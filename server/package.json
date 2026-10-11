@@ -9,6 +9,9 @@
     "seed:reset": "node scripts/seed.js --reset",
     "test": "jest"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",

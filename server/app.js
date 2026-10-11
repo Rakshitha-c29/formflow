@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 
 const app = express();
 
@@ -9,6 +10,9 @@ const app = express();
 if (process.env.TRUST_PROXY === "true") {
     app.set("trust proxy", 1);
 }
+
+// Security headers first, so every response gets them (including CORS preflights and errors)
+app.use(helmet());
 
 // Falls back to the Vite dev server so local development needs no extra config
 app.use(

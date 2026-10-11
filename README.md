@@ -4,7 +4,8 @@
 
 A multi-stage workflow and approval engine with role-based, stage-aware authorization.
 
-**Live demo:** https://your-app.vercel.app (sign in with the [demo accounts](#seed-demo-data), password `Demo@2026`)
+**Live demo:** https://formflow-sigma-one.vercel.app/
+ (sign in with the [demo accounts](#seed-demo-data), password `Demo@2026`)
 
 > The backend runs on a free hosting tier that sleeps when idle, so the first request after a quiet period can take up to a minute while it wakes up. Later requests are fast.
 

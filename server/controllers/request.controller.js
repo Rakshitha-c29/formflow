@@ -2,8 +2,9 @@ const Request = require("../models/Request.model");
 const Workflow = require("../models/Workflow.model");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
-const { ROLES } = require("../constants/roles");
+const { parsePagination, pageInfo } = require("../utils/pagination");
 const {
+    pendingRequestsFilter,
     snapshotSteps,
     getTransition,
     canActOnRequest,
@@ -54,16 +55,48 @@ exports.submitRequest = asyncHandler(async (req, res) => {
 // GET MY REQUESTS
 // ==========================
 exports.getMyRequests = asyncHandler(async (req, res) => {
-    const requests = await Request.find({
-        submittedBy: req.user.id
-    })
-        .populate("workflow", "name description")
-        .sort({ createdAt: -1 });
+    const pagination = parsePagination(req.query);
+    const filter = { submittedBy: req.user._id };
+
+    // _id breaks ties between requests created in the same millisecond, so pages never overlap
+    const [requests, total] = await Promise.all([
+        Request.find(filter)
+            .populate("workflow", "name description")
+            .sort({ createdAt: -1, _id: -1 })
+            .skip(pagination.skip)
+            .limit(pagination.limit),
+        Request.countDocuments(filter)
+    ]);
 
     res.status(200).json({
         success: true,
         count: requests.length,
+        ...pageInfo(pagination, total),
         requests
+    });
+});
+
+
+// ==========================
+// MY REQUEST STATS
+// ==========================
+// Totals for the dashboard cards, independent of which page of the list is loaded
+exports.getMyRequestStats = asyncHandler(async (req, res) => {
+    const groups = await Request.aggregate([
+        { $match: { submittedBy: req.user._id } },
+        { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]);
+
+    const stats = { total: 0, pending: 0, approved: 0, rejected: 0 };
+
+    for (const { _id: status, count } of groups) {
+        stats[status] = count;
+        stats.total += count;
+    }
+
+    res.status(200).json({
+        success: true,
+        stats
     });
 });
 
@@ -74,28 +107,25 @@ exports.getMyRequests = asyncHandler(async (req, res) => {
 // Admin sees every pending request; everyone else sees only the ones
 // waiting on their role at the current step (never their own)
 exports.getPendingRequests = asyncHandler(async (req, res) => {
-    const filter = { status: "pending" };
+    const pagination = parsePagination(req.query);
 
-    if (req.user.role !== ROLES.ADMIN) {
-        // Narrow in the database, then keep only requests whose current step is this role's
-        filter["steps.approverRole"] = req.user.role;
-        filter.submittedBy = { $ne: req.user._id };
-    }
+    // Filtered entirely in the database so total and pages are exact
+    const filter = pendingRequestsFilter(req.user);
 
-    let requests = await Request.find(filter)
-        .populate("workflow", "name description")
-        .populate("submittedBy", "name email")
-        .sort({ createdAt: -1 });
-
-    if (req.user.role !== ROLES.ADMIN) {
-        requests = requests.filter(
-            (request) => canActOnRequest(req.user, request).allowed
-        );
-    }
+    const [requests, total] = await Promise.all([
+        Request.find(filter)
+            .populate("workflow", "name description")
+            .populate("submittedBy", "name email")
+            .sort({ createdAt: -1, _id: -1 })
+            .skip(pagination.skip)
+            .limit(pagination.limit),
+        Request.countDocuments(filter)
+    ]);
 
     res.status(200).json({
         success: true,
         count: requests.length,
+        ...pageInfo(pagination, total),
         requests
     });
 });

@@ -1,16 +1,21 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useApiGet } from "../hooks/useApiGet";
 import { useAuth } from "../context/AuthContext";
 import { ROLES, roleLabel } from "../constants/roles";
 import { formatDate, getCurrentStep } from "../utils/requests";
+import Pagination from "../components/Pagination";
 
 function PendingApprovals() {
     const { user } = useAuth();
     const isAdmin = user.role === ROLES.ADMIN;
 
+    const [page, setPage] = useState(1);
+
     const { data, loading, error, reload } = useApiGet(
-        "/requests/pending",
-        "Could not load pending approvals."
+        `/requests/pending?page=${page}`,
+        "Could not load pending approvals.",
+        { keepPrevious: true }
     );
     const requests = data?.requests || [];
 
@@ -50,6 +55,16 @@ function PendingApprovals() {
                     <p>{error.message}</p>
                     <button className="secondary-btn spaced" onClick={reload}>
                         Try again
+                    </button>
+                </div>
+
+            ) : requests.length === 0 && page > 1 ? (
+
+                <div className="empty-state">
+                    <h3>No requests on this page</h3>
+                    <p>Requests may have been approved since you opened this list.</p>
+                    <button className="secondary-btn spaced" onClick={() => setPage(1)}>
+                        Back to page 1
                     </button>
                 </div>
 
@@ -107,6 +122,17 @@ function PendingApprovals() {
                     })}
                 </div>
 
+            )}
+
+            {!error && (
+                <Pagination
+                    page={page}
+                    totalPages={data?.totalPages}
+                    total={data?.total}
+                    loading={loading}
+                    onPageChange={setPage}
+                    itemLabel="pending"
+                />
             )}
 
         </main>

@@ -5,6 +5,7 @@ const router = express.Router();
 const {
     submitRequest,
     getMyRequests,
+    getMyRequestStats,
     getPendingRequests,
     getRequestById,
     processRequest
@@ -20,6 +21,9 @@ router.post("/", protect, submitRequest);
 
 // Get my requests
 router.get("/", protect, getMyRequests);
+
+// Status totals for the dashboard (above /:id, like /pending)
+router.get("/stats", protect, getMyRequestStats);
 
 // Get pending requests
 router.get("/pending", protect, getPendingRequests);

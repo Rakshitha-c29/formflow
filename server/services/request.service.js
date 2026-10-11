@@ -85,7 +85,41 @@ const canViewRequest = (user, request) => {
     return canActOnRequest(user, request).allowed;
 };
 
+// ==========================
+// DATABASE FILTER: REQUESTS WAITING ON THIS USER
+// ==========================
+// The query form of canActOnRequest, so pending queues can be paginated in the database.
+// Admin sees every pending request. Everyone else: pending, not their own, and the step
+// whose stepNumber equals currentStep is assigned to their role.
+const pendingRequestsFilter = (user) => {
+    if (user.role === ROLES.ADMIN) {
+        return { status: "pending" };
+    }
+
+    return {
+        status: "pending",
+        submittedBy: { $ne: user._id },
+        // Index-friendly pre-filter; the $expr below is the exact rule
+        "steps.approverRole": user.role,
+        $expr: {
+            $anyElementTrue: {
+                $map: {
+                    input: { $ifNull: ["$steps", []] },
+                    as: "step",
+                    in: {
+                        $and: [
+                            { $eq: ["$$step.stepNumber", "$currentStep"] },
+                            { $eq: ["$$step.approverRole", user.role] }
+                        ]
+                    }
+                }
+            }
+        }
+    };
+};
+
 module.exports = {
+    pendingRequestsFilter,
     snapshotSteps,
     getCurrentStep,
     getNextStep,

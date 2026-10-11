@@ -1013,3 +1013,28 @@ select:focus {
     }
 
 }
+
+
+/* PAGINATION */
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.pagination-info {
+    color: #7b8495;
+    font-size: 14px;
+}
+
+@media (max-width: 600px) {
+
+    .pagination-info {
+        font-size: 12px;
+        text-align: center;
+    }
+
+}

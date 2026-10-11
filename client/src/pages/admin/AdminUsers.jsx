@@ -3,13 +3,17 @@ import api, { getApiError } from "../../services/api";
 import { useApiGet } from "../../hooks/useApiGet";
 import { useAuth } from "../../context/AuthContext";
 import { ROLE_VALUES, roleLabel } from "../../constants/roles";
+import Pagination from "../../components/Pagination";
 
 function AdminUsers() {
     const { user: currentUser } = useAuth();
 
+    const [page, setPage] = useState(1);
+
     const { data, loading, error: loadError, reload: loadUsers, setData } = useApiGet(
-        "/users",
-        "Could not load users."
+        `/users?page=${page}`,
+        "Could not load users.",
+        { keepPrevious: true }
     );
     const users = data?.users || [];
 
@@ -152,6 +156,17 @@ function AdminUsers() {
                         </table>
                     </div>
 
+                )}
+
+                {!loadError && (
+                    <Pagination
+                        page={page}
+                        totalPages={data?.totalPages}
+                        total={data?.total}
+                        loading={loading}
+                        onPageChange={setPage}
+                        itemLabel="users"
+                    />
                 )}
             </section>
 

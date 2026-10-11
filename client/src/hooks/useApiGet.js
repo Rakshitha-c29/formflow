@@ -4,7 +4,9 @@ import api, { getApiError } from "../services/api";
 // GETs `url` on mount, when `url` changes, and when reload() is called.
 // State is only set from the request's callbacks, and responses for a
 // URL the page has moved away from are ignored.
-export function useApiGet(url, fallbackMessage = "Could not load data.") {
+// keepPrevious: while a new URL loads (e.g. the next page), keep returning the
+// last data instead of null, so lists don't flash empty between pages.
+export function useApiGet(url, fallbackMessage = "Could not load data.", { keepPrevious = false } = {}) {
     const [reloadCount, setReloadCount] = useState(0);
     const requestKey = `${url}#${reloadCount}`;
 
@@ -42,7 +44,7 @@ export function useApiGet(url, fallbackMessage = "Could not load data.") {
     }, []);
 
     return {
-        data: result.url === url ? result.data : null,
+        data: result.url === url || keepPrevious ? result.data : null,
         error: result.url === url ? result.error : null,
         loading: result.key !== requestKey,
         reload,

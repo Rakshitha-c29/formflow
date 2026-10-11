@@ -5,16 +5,26 @@ import { useApiGet } from "../hooks/useApiGet";
 import { useAuth } from "../context/AuthContext";
 import { ROLES, roleLabel } from "../constants/roles";
 import { getCurrentStep } from "../utils/requests";
+import Pagination from "../components/Pagination";
 
 function Dashboard() {
     const { user } = useAuth();
 
-    const requestsQuery = useApiGet("/requests", "Could not load your requests.");
+    const [page, setPage] = useState(1);
+
+    const requestsQuery = useApiGet(
+        `/requests?page=${page}`,
+        "Could not load your requests.",
+        { keepPrevious: true }
+    );
+    // Card totals come from the server, not from the page of requests currently loaded
+    const statsQuery = useApiGet("/requests/stats", "Could not load your totals.");
     const workflowsQuery = useApiGet("/workflows", "Could not load workflows.");
 
     const requests = requestsQuery.data?.requests || [];
+    const stats = statsQuery.data?.stats;
     const workflows = workflowsQuery.data?.workflows || [];
-    const loadError = requestsQuery.error || workflowsQuery.error;
+    const loadError = requestsQuery.error || statsQuery.error || workflowsQuery.error;
 
     const [message, setMessage] = useState("");
     const [submitError, setSubmitError] = useState("");
@@ -55,7 +65,10 @@ function Dashboard() {
 
             setShowCreate(false);
 
+            // The new request is the newest, so show page 1
+            setPage(1);
             requestsQuery.reload();
+            statsQuery.reload();
         } catch (error) {
             setSubmitError(getApiError(error, "Could not submit request.").message);
         } finally {
@@ -70,6 +83,7 @@ function Dashboard() {
 
     const firstLoad =
         (requestsQuery.loading && !requestsQuery.data) ||
+        (statsQuery.loading && !statsQuery.data) ||
         (workflowsQuery.loading && !workflowsQuery.data);
 
     if (firstLoad && !loadError) {
@@ -81,14 +95,6 @@ function Dashboard() {
             </main>
         );
     }
-
-    const pendingCount = requests.filter(
-        (request) => request.status === "pending"
-    ).length;
-
-    const approvedCount = requests.filter(
-        (request) => request.status === "approved"
-    ).length;
 
     return (
         <main className="page">
@@ -129,6 +135,7 @@ function Dashboard() {
                         className="secondary-btn"
                         onClick={() => {
                             requestsQuery.reload();
+                            statsQuery.reload();
                             workflowsQuery.reload();
                         }}
                     >
@@ -141,17 +148,17 @@ function Dashboard() {
 
                 <div className="stat-card">
                     <span>My Requests</span>
-                    <strong>{requests.length}</strong>
+                    <strong>{stats?.total ?? "—"}</strong>
                 </div>
 
                 <div className="stat-card">
                     <span>Pending</span>
-                    <strong>{pendingCount}</strong>
+                    <strong>{stats?.pending ?? "—"}</strong>
                 </div>
 
                 <div className="stat-card">
                     <span>Approved</span>
-                    <strong>{approvedCount}</strong>
+                    <strong>{stats?.approved ?? "—"}</strong>
                 </div>
 
                 <div className="stat-card">
@@ -174,11 +181,17 @@ function Dashboard() {
                 {requests.length === 0 ? (
 
                     <div className="empty-state">
-                        <h3>No requests yet</h3>
-
-                        <p>
-                            Create your first workflow request.
-                        </p>
+                        {page > 1 ? (
+                            <>
+                                <h3>No requests on this page</h3>
+                                <p>Go back to an earlier page.</p>
+                            </>
+                        ) : (
+                            <>
+                                <h3>No requests yet</h3>
+                                <p>Create your first workflow request.</p>
+                            </>
+                        )}
                     </div>
 
                 ) : (
@@ -228,6 +241,15 @@ function Dashboard() {
                     </div>
 
                 )}
+
+                <Pagination
+                    page={page}
+                    totalPages={requestsQuery.data?.totalPages}
+                    total={requestsQuery.data?.total}
+                    loading={requestsQuery.loading}
+                    onPageChange={setPage}
+                    itemLabel="requests"
+                />
 
             </section>
 

@@ -1,6 +1,7 @@
 const User = require("../models/User.model");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
+const { parsePagination, pageInfo } = require("../utils/pagination");
 
 
 // ==========================
@@ -37,13 +38,21 @@ exports.updateUserRole = asyncHandler(async (req, res) => {
 // LIST USERS (ADMIN)
 // ==========================
 exports.getUsers = asyncHandler(async (req, res) => {
-    const users = await User.find()
-        .select("name email role createdAt")
-        .sort({ name: 1 });
+    const pagination = parsePagination(req.query);
+
+    const [users, total] = await Promise.all([
+        User.find()
+            .select("name email role createdAt")
+            .sort({ name: 1, _id: 1 })
+            .skip(pagination.skip)
+            .limit(pagination.limit),
+        User.countDocuments()
+    ]);
 
     res.status(200).json({
         success: true,
         count: users.length,
+        ...pageInfo(pagination, total),
         users
     });
 });

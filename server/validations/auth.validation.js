@@ -4,6 +4,17 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const isNonEmptyString = (value) =>
     typeof value === "string" && value.trim().length > 0;
 
+// Applies to new passwords only; login accepts any existing password
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_RULE_MESSAGE =
+    `Password must be at least ${PASSWORD_MIN_LENGTH} characters and include at least one letter and one number`;
+
+const isStrongPassword = (value) =>
+    typeof value === "string" &&
+    value.length >= PASSWORD_MIN_LENGTH &&
+    /[A-Za-z]/.test(value) &&
+    /[0-9]/.test(value);
+
 const validateEmail = (body, errors) => {
     if (!isNonEmptyString(body.email)) {
         errors.push("Email is required");
@@ -28,8 +39,8 @@ exports.registerSchema = (body) => {
 
     validateEmail(body, errors);
 
-    if (typeof body.password !== "string" || body.password.length < 6) {
-        errors.push("Password must be at least 6 characters");
+    if (!isStrongPassword(body.password)) {
+        errors.push(PASSWORD_RULE_MESSAGE);
     }
 
     return errors;

@@ -14,7 +14,7 @@ const Request = require("../models/Request.model");
 const { snapshotSteps } = require("../services/request.service");
 const { ROLE_VALUES } = require("../constants/roles");
 
-const TEST_PASSWORD = "Password123";
+const TEST_PASSWORD = "Demo@2026";
 
 const TEST_USER_NAMES = {
     employee: "Test Employee",

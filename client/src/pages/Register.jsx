@@ -91,8 +91,10 @@ function Register() {
                     <input
                         type="password"
                         name="password"
-                        placeholder="Minimum 6 characters"
-                        minLength="6"
+                        placeholder="8+ characters, a letter and a number"
+                        minLength="8"
+                        pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}"
+                        title="At least 8 characters, including at least one letter and one number"
                         value={form.password}
                         onChange={handleChange}
                         required

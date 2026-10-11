@@ -1,5 +1,6 @@
 const request = require("supertest");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 const app = require("../app");
 const User = require("../models/User.model");
 const { useTestDB } = require("./helpers/db");
@@ -121,6 +122,46 @@ describe("JWT signing and verification", () => {
 });
 
 
+describe("registration password rule", () => {
+    const PASSWORD_RULE = "Password must be at least 8 characters and include at least one letter and one number";
+
+    const registerWith = (password) =>
+        register({ name: "Ana", email: "ana@formflow.test", password });
+
+    it.each([
+        ["7 characters", "abcdef1"],
+        ["letters only", "abcdefgh"],
+        ["numbers only", "12345678"],
+        ["symbols and numbers but no letter", "@@@@1234"],
+        ["an empty string", ""],
+        ["a number instead of a string", 12345678],
+        ["an operator object", { $ne: null }]
+    ])("rejects %s with a clear 400 and creates no user", async (_, password) => {
+        const res = await registerWith(password);
+
+        expect(res.status).toBe(400);
+        expect(res.body.errors).toEqual([PASSWORD_RULE]);
+        expect(await User.countDocuments()).toBe(0);
+    });
+
+    it.each([
+        ["exactly 8 characters", "abcdefg1"],
+        ["mixed case with a symbol", "Demo@2026"],
+        ["a number first", "1password"]
+    ])("accepts %s", async (_, password) => {
+        expect((await registerWith(password)).status).toBe(201);
+    });
+
+    it("does not apply to login, so existing shorter passwords still work", async () => {
+        const legacy = await createUser("employee", { password: await bcrypt.hash("abc12", 4) });
+
+        const res = await login({ email: legacy.email, password: "abc12" });
+
+        expect(res.status).toBe(200);
+    });
+});
+
+
 describe("errors array on validation failures", () => {
     it("lists each failed field from request validation, with message as the joined text", async () => {
         const res = await register({});
@@ -129,7 +170,7 @@ describe("errors array on validation failures", () => {
         expect(res.body.errors).toEqual([
             "Name is required",
             "Email is required",
-            "Password must be at least 6 characters"
+            "Password must be at least 8 characters and include at least one letter and one number"
         ]);
         expect(res.body.message).toBe(res.body.errors.join(", "));
     });
